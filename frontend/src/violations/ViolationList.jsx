@@ -4,6 +4,7 @@ import {
   Box, Typography, Button, TextField, Card, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, Chip, CircularProgress,
   InputAdornment, TablePagination, MenuItem, Select, FormControl, InputLabel,
+  Dialog, DialogTitle, DialogContent, DialogActions, Alert, Snackbar,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
@@ -12,6 +13,10 @@ import api from '../api/client';
 import EmptyState from '../components/common/EmptyState';
 
 const GREEN = '#1B4332';
+
+const INITIAL_FORM = {
+  property: '', violation_type: '', description: '', date_observed: '', priority: 'medium', photo: null,
+};
 
 export default function ViolationList() {
   const navigate = useNavigate();
@@ -23,21 +28,61 @@ export default function ViolationList() {
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [total, setTotal] = useState(0);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const params = { search, page: page + 1, page_size: rowsPerPage };
-        if (statusFilter !== 'all') params.status = statusFilter;
-        const { data } = await api.get('/violations/', { params });
-        const list = Array.isArray(data) ? data : data.results || [];
-        setViolations(list);
-        setTotal(data.count ?? list.length);
-      } catch { setViolations([]); }
-      finally { setLoading(false); }
-    };
-    fetchData();
-  }, [search, statusFilter, page, rowsPerPage]);
+  // Dialog state
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState(INITIAL_FORM);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+  const [properties, setProperties] = useState([]);
+  const [violationTypes, setViolationTypes] = useState([]);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const params = { search, page: page + 1, page_size: rowsPerPage };
+      if (statusFilter !== 'all') params.status = statusFilter;
+      const { data } = await api.get('/violations/', { params });
+      const list = Array.isArray(data) ? data : data.results || [];
+      setViolations(list);
+      setTotal(data.count ?? list.length);
+    } catch { setViolations([]); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { fetchData(); }, [search, statusFilter, page, rowsPerPage]);
+
+  const handleOpen = async () => {
+    setForm(INITIAL_FORM);
+    setError('');
+    setOpen(true);
+    try {
+      const [propRes, typeRes] = await Promise.all([
+        api.get('/properties/', { params: { page_size: 999 } }),
+        api.get('/violations/types/', { params: { page_size: 999 } }),
+      ]);
+      setProperties(Array.isArray(propRes.data) ? propRes.data : propRes.data.results || []);
+      setViolationTypes(Array.isArray(typeRes.data) ? typeRes.data : typeRes.data.results || []);
+    } catch { /* selects will be empty */ }
+  };
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    setError('');
+    try {
+      const payload = new FormData();
+      Object.entries(form).forEach(([k, v]) => {
+        if (v !== null && v !== '') payload.append(k, v);
+      });
+      await api.post('/violations/violations/', payload);
+      setOpen(false);
+      setSuccess(true);
+      fetchData();
+    } catch (err) {
+      const msg = err.response?.data;
+      setError(typeof msg === 'string' ? msg : JSON.stringify(msg) || 'Failed to create violation.');
+    } finally { setSubmitting(false); }
+  };
 
   const statusColor = (s) => {
     const map = { open: 'error', pending: 'warning', resolved: 'success', appealed: 'info', closed: 'default' };
@@ -48,7 +93,7 @@ export default function ViolationList() {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
         <Typography variant="h5" sx={{ fontWeight: 800, color: GREEN, fontFamily: '"Georgia", serif' }}>Violations</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: GREEN, '&:hover': { bgcolor: '#2D6A4F' } }}>
+        <Button variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: GREEN, '&:hover': { bgcolor: '#2D6A4F' } }} onClick={handleOpen}>
           Create Violation
         </Button>
       </Box>
@@ -113,6 +158,59 @@ export default function ViolationList() {
           </>
         )}
       </Card>
+
+      {/* Create Violation Dialog */}
+      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, color: GREEN }}>New Violation</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '16px !important' }}>
+          {error && <Alert severity="error">{error}</Alert>}
+          <FormControl fullWidth>
+            <InputLabel>Property *</InputLabel>
+            <Select value={form.property} label="Property *" onChange={(e) => setForm({ ...form, property: e.target.value })}>
+              {properties.map((p) => (
+                <MenuItem key={p.id} value={p.id}>{p.address || p.unit_number || `Property #${p.id}`}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl fullWidth>
+            <InputLabel>Violation Type *</InputLabel>
+            <Select value={form.violation_type} label="Violation Type *" onChange={(e) => setForm({ ...form, violation_type: e.target.value })}>
+              {violationTypes.map((t) => (
+                <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <TextField label="Description" multiline rows={3} fullWidth value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          <TextField label="Date Observed" type="date" fullWidth value={form.date_observed}
+            onChange={(e) => setForm({ ...form, date_observed: e.target.value })}
+            slotProps={{ inputLabel: { shrink: true } }} />
+          <FormControl fullWidth>
+            <InputLabel>Priority</InputLabel>
+            <Select value={form.priority} label="Priority" onChange={(e) => setForm({ ...form, priority: e.target.value })}>
+              <MenuItem value="low">Low</MenuItem>
+              <MenuItem value="medium">Medium</MenuItem>
+              <MenuItem value="high">High</MenuItem>
+            </Select>
+          </FormControl>
+          <Button variant="outlined" component="label">
+            {form.photo ? form.photo.name : 'Upload Photo (optional)'}
+            <input type="file" hidden accept="image/*" onChange={(e) => setForm({ ...form, photo: e.target.files[0] || null })} />
+          </Button>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleSubmit} disabled={submitting}
+            sx={{ bgcolor: GREEN, '&:hover': { bgcolor: '#2D6A4F' } }}>
+            {submitting ? <CircularProgress size={22} /> : 'Create'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar open={success} autoHideDuration={3000} onClose={() => setSuccess(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+        <Alert severity="success" onClose={() => setSuccess(false)}>Violation created successfully.</Alert>
+      </Snackbar>
     </Box>
   );
 }

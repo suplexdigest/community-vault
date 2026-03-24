@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, TextField, Card, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, Chip, CircularProgress,
-  InputAdornment, TablePagination, IconButton,
+  InputAdornment, TablePagination, IconButton, MenuItem, Select,
+  FormControl, InputLabel, Switch, FormControlLabel,
+  Dialog, DialogTitle, DialogContent, DialogActions, Alert, Snackbar,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
@@ -14,6 +16,10 @@ import EmptyState from '../components/common/EmptyState';
 
 const GREEN = '#1B4332';
 
+const INITIAL_FORM = {
+  title: '', category: '', document_type: 'other', file: null, description: '', is_public: false,
+};
+
 export default function DocumentList() {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,19 +28,58 @@ export default function DocumentList() {
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [total, setTotal] = useState(0);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const { data } = await api.get('/documents/', { params: { search, page: page + 1, page_size: rowsPerPage } });
-        const list = Array.isArray(data) ? data : data.results || [];
-        setDocuments(list);
-        setTotal(data.count ?? list.length);
-      } catch { setDocuments([]); }
-      finally { setLoading(false); }
-    };
-    fetchData();
-  }, [search, page, rowsPerPage]);
+  // Dialog state
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState(INITIAL_FORM);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+  const [categories, setCategories] = useState([]);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const { data } = await api.get('/documents/', { params: { search, page: page + 1, page_size: rowsPerPage } });
+      const list = Array.isArray(data) ? data : data.results || [];
+      setDocuments(list);
+      setTotal(data.count ?? list.length);
+    } catch { setDocuments([]); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { fetchData(); }, [search, page, rowsPerPage]);
+
+  const handleOpen = async () => {
+    setForm(INITIAL_FORM);
+    setError('');
+    setOpen(true);
+    try {
+      const catRes = await api.get('/documents/categories/', { params: { page_size: 999 } }).catch(() => ({ data: [] }));
+      setCategories(Array.isArray(catRes.data) ? catRes.data : catRes.data.results || []);
+    } catch { /* empty */ }
+  };
+
+  const handleSubmit = async () => {
+    if (!form.file) { setError('Please select a file to upload.'); return; }
+    setSubmitting(true);
+    setError('');
+    try {
+      const fd = new FormData();
+      fd.append('file', form.file);
+      if (form.title) fd.append('title', form.title);
+      if (form.category) fd.append('category', form.category);
+      if (form.document_type) fd.append('document_type', form.document_type);
+      if (form.description) fd.append('description', form.description);
+      fd.append('is_public', form.is_public);
+      await api.post('/documents/documents/', fd);
+      setOpen(false);
+      setSuccess(true);
+      fetchData();
+    } catch (err) {
+      const msg = err.response?.data;
+      setError(typeof msg === 'string' ? msg : JSON.stringify(msg) || 'Failed to upload document.');
+    } finally { setSubmitting(false); }
+  };
 
   const formatSize = (bytes) => {
     if (!bytes) return '--';
@@ -47,7 +92,7 @@ export default function DocumentList() {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
         <Typography variant="h5" sx={{ fontWeight: 800, color: GREEN, fontFamily: '"Georgia", serif' }}>Documents</Typography>
-        <Button variant="contained" startIcon={<UploadFileIcon />} sx={{ bgcolor: GREEN, '&:hover': { bgcolor: '#2D6A4F' } }}>
+        <Button variant="contained" startIcon={<UploadFileIcon />} sx={{ bgcolor: GREEN, '&:hover': { bgcolor: '#2D6A4F' } }} onClick={handleOpen}>
           Upload Document
         </Button>
       </Box>
@@ -60,7 +105,7 @@ export default function DocumentList() {
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>
         ) : documents.length === 0 ? (
-          <EmptyState icon={DescriptionIcon} title="No documents found" description="Upload CC&Rs, bylaws, meeting minutes, and other community documents." actionLabel="Upload Document" onAction={() => {}} />
+          <EmptyState icon={DescriptionIcon} title="No documents found" description="Upload CC&Rs, bylaws, meeting minutes, and other community documents." actionLabel="Upload Document" onAction={handleOpen} />
         ) : (
           <>
             <TableContainer>
@@ -103,6 +148,61 @@ export default function DocumentList() {
           </>
         )}
       </Card>
+
+      {/* Upload Document Dialog */}
+      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, color: GREEN }}>Upload Document</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '16px !important' }}>
+          {error && <Alert severity="error">{error}</Alert>}
+          <TextField label="Title" fullWidth value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          {categories.length > 0 ? (
+            <FormControl fullWidth>
+              <InputLabel>Category</InputLabel>
+              <Select value={form.category} label="Category" onChange={(e) => setForm({ ...form, category: e.target.value })}>
+                {categories.map((c) => <MenuItem key={c.id || c.name} value={c.id || c.name}>{c.name}</MenuItem>)}
+              </Select>
+            </FormControl>
+          ) : (
+            <TextField label="Category" fullWidth value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })} />
+          )}
+          <FormControl fullWidth>
+            <InputLabel>Document Type</InputLabel>
+            <Select value={form.document_type} label="Document Type" onChange={(e) => setForm({ ...form, document_type: e.target.value })}>
+              <MenuItem value="ccr">CC&Rs</MenuItem>
+              <MenuItem value="bylaws">Bylaws</MenuItem>
+              <MenuItem value="rules">Rules & Regulations</MenuItem>
+              <MenuItem value="form">Form</MenuItem>
+              <MenuItem value="financial">Financial</MenuItem>
+              <MenuItem value="minutes">Meeting Minutes</MenuItem>
+              <MenuItem value="other">Other</MenuItem>
+            </Select>
+          </FormControl>
+          <Button variant="outlined" component="label" color={form.file ? 'success' : 'primary'}>
+            {form.file ? form.file.name : 'Select File *'}
+            <input type="file" hidden onChange={(e) => setForm({ ...form, file: e.target.files[0] || null })} />
+          </Button>
+          <TextField label="Description" multiline rows={2} fullWidth value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          <FormControlLabel
+            control={<Switch checked={form.is_public} onChange={(e) => setForm({ ...form, is_public: e.target.checked })} />}
+            label="Publicly Visible"
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleSubmit} disabled={submitting}
+            sx={{ bgcolor: GREEN, '&:hover': { bgcolor: '#2D6A4F' } }}>
+            {submitting ? <CircularProgress size={22} /> : 'Upload'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar open={success} autoHideDuration={3000} onClose={() => setSuccess(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+        <Alert severity="success" onClose={() => setSuccess(false)}>Document uploaded successfully.</Alert>
+      </Snackbar>
     </Box>
   );
 }

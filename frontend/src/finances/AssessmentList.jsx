@@ -3,6 +3,7 @@ import {
   Box, Typography, Button, TextField, Card, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, Chip, CircularProgress,
   InputAdornment, TablePagination, MenuItem, Select, FormControl, InputLabel,
+  Dialog, DialogTitle, DialogContent, DialogActions, Alert, Snackbar,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
@@ -11,6 +12,11 @@ import api from '../api/client';
 import EmptyState from '../components/common/EmptyState';
 
 const GREEN = '#1B4332';
+
+const INITIAL_FORM = {
+  property: '', owner: '', amount: '', assessment_type: 'regular',
+  period_start: '', period_end: '', due_date: '', notes: '',
+};
 
 export default function AssessmentList() {
   const [assessments, setAssessments] = useState([]);
@@ -21,24 +27,75 @@ export default function AssessmentList() {
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [total, setTotal] = useState(0);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const params = { search, page: page + 1, page_size: rowsPerPage };
-        if (statusFilter !== 'all') params.status = statusFilter;
-        const { data } = await api.get('/assessments/', { params });
-        const list = Array.isArray(data) ? data : data.results || [];
-        setAssessments(list);
-        setTotal(data.count ?? list.length);
-      } catch {
-        setAssessments([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [search, statusFilter, page, rowsPerPage]);
+  // Dialog state
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState(INITIAL_FORM);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+  const [properties, setProperties] = useState([]);
+  const [owners, setOwners] = useState([]);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const params = { search, page: page + 1, page_size: rowsPerPage };
+      if (statusFilter !== 'all') params.status = statusFilter;
+      const { data } = await api.get('/assessments/', { params });
+      const list = Array.isArray(data) ? data : data.results || [];
+      setAssessments(list);
+      setTotal(data.count ?? list.length);
+    } catch {
+      setAssessments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchData(); }, [search, statusFilter, page, rowsPerPage]);
+
+  const handleOpen = async () => {
+    setForm(INITIAL_FORM);
+    setError('');
+    setOpen(true);
+    try {
+      const [propRes, ownerRes] = await Promise.all([
+        api.get('/properties/', { params: { page_size: 999 } }),
+        api.get('/owners/', { params: { page_size: 999 } }).catch(() => ({ data: [] })),
+      ]);
+      const propList = Array.isArray(propRes.data) ? propRes.data : propRes.data.results || [];
+      setProperties(propList);
+      setOwners(Array.isArray(ownerRes.data) ? ownerRes.data : ownerRes.data.results || []);
+    } catch { /* selects may be empty */ }
+  };
+
+  const handlePropertyChange = (propId) => {
+    const prop = properties.find((p) => p.id === propId);
+    setForm({
+      ...form,
+      property: propId,
+      owner: prop?.owner_id || prop?.owner?.id || form.owner,
+    });
+  };
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    setError('');
+    try {
+      const payload = {};
+      Object.entries(form).forEach(([k, v]) => {
+        if (v !== '') payload[k] = v;
+      });
+      if (payload.amount) payload.amount = parseFloat(payload.amount);
+      await api.post('/finances/assessments/', payload);
+      setOpen(false);
+      setSuccess(true);
+      fetchData();
+    } catch (err) {
+      const msg = err.response?.data;
+      setError(typeof msg === 'string' ? msg : JSON.stringify(msg) || 'Failed to create assessment.');
+    } finally { setSubmitting(false); }
+  };
 
   const statusColor = (s) => {
     const map = { paid: 'success', pending: 'warning', overdue: 'error', partial: 'info' };
@@ -51,7 +108,7 @@ export default function AssessmentList() {
         <Typography variant="h5" sx={{ fontWeight: 800, color: GREEN, fontFamily: '"Georgia", serif' }}>
           Assessments
         </Typography>
-        <Button variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: GREEN, '&:hover': { bgcolor: '#2D6A4F' } }}>
+        <Button variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: GREEN, '&:hover': { bgcolor: '#2D6A4F' } }} onClick={handleOpen}>
           Create Assessment
         </Button>
       </Box>
@@ -82,7 +139,7 @@ export default function AssessmentList() {
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>
         ) : assessments.length === 0 ? (
-          <EmptyState icon={ReceiptIcon} title="No assessments found" description="Create your first assessment to bill property owners." actionLabel="Create Assessment" onAction={() => {}} />
+          <EmptyState icon={ReceiptIcon} title="No assessments found" description="Create your first assessment to bill property owners." actionLabel="Create Assessment" onAction={handleOpen} />
         ) : (
           <>
             <TableContainer>
@@ -119,6 +176,65 @@ export default function AssessmentList() {
           </>
         )}
       </Card>
+
+      {/* New Assessment Dialog */}
+      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, color: GREEN }}>New Assessment</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '16px !important' }}>
+          {error && <Alert severity="error">{error}</Alert>}
+          <FormControl fullWidth>
+            <InputLabel>Property *</InputLabel>
+            <Select value={form.property} label="Property *" onChange={(e) => handlePropertyChange(e.target.value)}>
+              {properties.map((p) => (
+                <MenuItem key={p.id} value={p.id}>{p.address || p.unit_number || `Property #${p.id}`}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl fullWidth>
+            <InputLabel>Owner</InputLabel>
+            <Select value={form.owner} label="Owner" onChange={(e) => setForm({ ...form, owner: e.target.value })}>
+              {owners.map((o) => (
+                <MenuItem key={o.id} value={o.id}>{o.name || `${o.first_name} ${o.last_name}`}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <TextField label="Amount *" type="number" fullWidth value={form.amount}
+            onChange={(e) => setForm({ ...form, amount: e.target.value })}
+            slotProps={{ input: { startAdornment: <InputAdornment position="start">$</InputAdornment> } }} />
+          <FormControl fullWidth>
+            <InputLabel>Assessment Type</InputLabel>
+            <Select value={form.assessment_type} label="Assessment Type" onChange={(e) => setForm({ ...form, assessment_type: e.target.value })}>
+              <MenuItem value="regular">Regular</MenuItem>
+              <MenuItem value="special">Special</MenuItem>
+              <MenuItem value="late_fee">Late Fee</MenuItem>
+              <MenuItem value="fine">Fine</MenuItem>
+            </Select>
+          </FormControl>
+          <TextField label="Period Start" type="date" fullWidth value={form.period_start}
+            onChange={(e) => setForm({ ...form, period_start: e.target.value })}
+            slotProps={{ inputLabel: { shrink: true } }} />
+          <TextField label="Period End" type="date" fullWidth value={form.period_end}
+            onChange={(e) => setForm({ ...form, period_end: e.target.value })}
+            slotProps={{ inputLabel: { shrink: true } }} />
+          <TextField label="Due Date" type="date" fullWidth value={form.due_date}
+            onChange={(e) => setForm({ ...form, due_date: e.target.value })}
+            slotProps={{ inputLabel: { shrink: true } }} />
+          <TextField label="Notes" multiline rows={2} fullWidth value={form.notes}
+            onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleSubmit} disabled={submitting}
+            sx={{ bgcolor: GREEN, '&:hover': { bgcolor: '#2D6A4F' } }}>
+            {submitting ? <CircularProgress size={22} /> : 'Create'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar open={success} autoHideDuration={3000} onClose={() => setSuccess(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+        <Alert severity="success" onClose={() => setSuccess(false)}>Assessment created successfully.</Alert>
+      </Snackbar>
     </Box>
   );
 }
