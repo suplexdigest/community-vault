@@ -13,8 +13,8 @@ class User(AbstractUser):
     two_factor_secret = models.CharField(max_length=64, blank=True, default="")
     date_joined = models.DateTimeField(default=timezone.now)
 
-    USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = ["username"]
+    USERNAME_FIELD = "username"
+    REQUIRED_FIELDS = ["email"]
 
     class Meta:
         ordering = ["-date_joined"]
