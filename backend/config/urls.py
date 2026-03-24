@@ -68,10 +68,25 @@ else:
         re_path(r'^media/(?P<path>.*)$', static_serve, {'document_root': settings.MEDIA_ROOT}),
     ]
 
-# Serve React frontend for non-API routes
+# Serve frontend assets and SPA catch-all in production
 if not settings.DEBUG:
+    from django.views.static import serve as assets_serve
     from django.views.generic import TemplateView
     from django.urls import re_path as re_path2
+    from pathlib import Path
+
+    # Find frontend dist directory (Docker or local)
+    _assets_root = Path(settings.BASE_DIR) / "frontend-dist"
+    if not _assets_root.exists():
+        _assets_root = Path(settings.BASE_DIR).parent / "frontend" / "dist"
+
+    # Serve /assets/ and /favicon.svg directly from frontend dist
     urlpatterns += [
-        re_path2(r'^(?!api/|admin/|static/|media/).*$', TemplateView.as_view(template_name='index.html')),
+        re_path2(r'^assets/(?P<path>.*)$', assets_serve, {'document_root': str(_assets_root / 'assets')}),
+        re_path2(r'^favicon\.svg$', assets_serve, {'document_root': str(_assets_root), 'path': 'favicon.svg'}),
+    ]
+
+    # SPA catch-all: serve index.html for all other non-API routes
+    urlpatterns += [
+        re_path2(r'^(?!api/|admin/|static/|media/|assets/).*$', TemplateView.as_view(template_name='index.html')),
     ]
