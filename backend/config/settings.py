@@ -66,7 +66,10 @@ MIDDLEWARE = [
 ROOT_URLCONF = "config.urls"
 
 # Include frontend dist in template dirs for serving React index.html
-_frontend_dist = BASE_DIR.parent / "frontend" / "dist"
+# In Docker, frontend-dist is at /app/frontend-dist; locally at ../frontend/dist
+_frontend_dist = BASE_DIR / "frontend-dist"
+if not _frontend_dist.exists():
+    _frontend_dist = BASE_DIR.parent / "frontend" / "dist"
 
 TEMPLATES = [
     {
