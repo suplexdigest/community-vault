@@ -18,7 +18,7 @@ export function CommunityProvider({ children }) {
       return;
     }
     try {
-      const { data } = await api.get('/communities/');
+      const { data } = await api.get('/auth/my-communities/');
       const list = Array.isArray(data) ? data : data.results || [];
       setCommunities(list);
 

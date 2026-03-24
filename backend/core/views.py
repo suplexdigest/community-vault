@@ -38,7 +38,15 @@ def register(request):
 @permission_classes([IsAuthenticated])
 def profile(request):
     if request.method == "GET":
-        return Response(UserSerializer(request.user).data)
+        data = UserSerializer(request.user).data
+        # Include highest role across all communities (or for current community)
+        community_id = request.headers.get("X-Community-Id")
+        role_qs = Role.objects.filter(user=request.user)
+        if community_id:
+            role_qs = role_qs.filter(community_id=community_id)
+        role_obj = role_qs.first()
+        data["role"] = role_obj.role if role_obj else "resident"
+        return Response(data)
     serializer = UserSerializer(request.user, data=request.data, partial=True)
     serializer.is_valid(raise_exception=True)
     serializer.save()
