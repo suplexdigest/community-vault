@@ -495,7 +495,7 @@ class Command(BaseCommand):
                     "status": status_choice,
                     "priority": random.choice(["low", "medium", "medium", "high"]),
                     "cure_deadline": observed + timedelta(days=vtype.cure_period_days),
-                    "cured_date": observed + timedelta(days=random.randint(3, vtype.cure_period_days)) if status_choice in ("cured", "closed") else None,
+                    "cured_date": observed + timedelta(days=random.randint(1, max(3, vtype.cure_period_days))) if status_choice in ("cured", "closed") else None,
                     "reported_by": random.choice([admin_user, manager, president, board1]),
                 },
             )
