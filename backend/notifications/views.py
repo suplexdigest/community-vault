@@ -3,6 +3,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
+from core.permissions import IsManagerOrAbove
+
 from .models import NotificationPreference, NotificationLog, ReminderSchedule
 from .serializers import NotificationPreferenceSerializer, NotificationLogSerializer, ReminderScheduleSerializer
 
@@ -35,7 +37,7 @@ class NotificationPreferenceView(APIView):
 
 class NotificationLogView(APIView):
     """List notification logs for the community (managers+)."""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsManagerOrAbove]
 
     def get(self, request):
         community_id = request.headers.get("X-Community-Id")
@@ -47,7 +49,7 @@ class NotificationLogView(APIView):
 
 class ReminderScheduleView(APIView):
     """Get or update reminder schedules (managers+)."""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsManagerOrAbove]
 
     def get(self, request):
         community_id = request.headers.get("X-Community-Id")

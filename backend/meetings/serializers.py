@@ -9,7 +9,7 @@ class AgendaItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = AgendaItem
         fields = "__all__"
-        read_only_fields = ["id"]
+        read_only_fields = ["community", "id"]
 
 
 class MinutesSerializer(serializers.ModelSerializer):
@@ -19,7 +19,7 @@ class MinutesSerializer(serializers.ModelSerializer):
     class Meta:
         model = Minutes
         fields = "__all__"
-        read_only_fields = ["id"]
+        read_only_fields = ["community", "id"]
 
 
 class MeetingSerializer(serializers.ModelSerializer):
@@ -30,7 +30,7 @@ class MeetingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Meeting
         fields = "__all__"
-        read_only_fields = ["id", "created_by"]
+        read_only_fields = ["community", "id", "created_by"]
 
     def get_has_minutes(self, obj):
         return hasattr(obj, "minutes")
@@ -48,7 +48,7 @@ class BallotSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ballot
         fields = "__all__"
-        read_only_fields = ["id", "cast_date", "voter"]
+        read_only_fields = ["community", "id", "cast_date", "voter"]
 
 
 class VoteSerializer(serializers.ModelSerializer):
@@ -58,7 +58,7 @@ class VoteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Vote
         fields = "__all__"
-        read_only_fields = ["id"]
+        read_only_fields = ["community", "id"]
 
     def get_results(self, obj):
         ballots = obj.ballots.all()

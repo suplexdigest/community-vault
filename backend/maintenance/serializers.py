@@ -7,7 +7,7 @@ class MaintenanceCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = MaintenanceCategory
         fields = "__all__"
-        read_only_fields = ["id"]
+        read_only_fields = ["community", "id"]
 
 
 class WorkOrderCommentSerializer(serializers.ModelSerializer):
@@ -16,7 +16,7 @@ class WorkOrderCommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = WorkOrderComment
         fields = "__all__"
-        read_only_fields = ["id", "created_at", "author"]
+        read_only_fields = ["community", "id", "created_at", "author"]
 
 
 class WorkOrderSerializer(serializers.ModelSerializer):
@@ -31,4 +31,4 @@ class WorkOrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = WorkOrder
         fields = "__all__"
-        read_only_fields = ["id", "created_at", "requested_by"]
+        read_only_fields = ["community", "id", "created_at", "requested_by"]

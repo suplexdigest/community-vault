@@ -7,7 +7,7 @@ class PropertySerializer(serializers.ModelSerializer):
     class Meta:
         model = Property
         fields = "__all__"
-        read_only_fields = ["id", "created_at"]
+        read_only_fields = ["community", "id", "created_at"]
 
 
 class PropertyListSerializer(serializers.ModelSerializer):
@@ -24,7 +24,7 @@ class OwnerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Owner
         fields = "__all__"
-        read_only_fields = ["id"]
+        read_only_fields = ["community", "id"]
 
     def get_full_name(self, obj):
         return f"{obj.first_name} {obj.last_name}"
@@ -37,7 +37,7 @@ class ResidentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Resident
         fields = "__all__"
-        read_only_fields = ["id"]
+        read_only_fields = ["community", "id"]
 
 
 class ParkingSpotSerializer(serializers.ModelSerializer):
@@ -46,4 +46,4 @@ class ParkingSpotSerializer(serializers.ModelSerializer):
     class Meta:
         model = ParkingSpot
         fields = "__all__"
-        read_only_fields = ["id"]
+        read_only_fields = ["community", "id"]

@@ -7,7 +7,7 @@ class ViolationTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = ViolationType
         fields = "__all__"
-        read_only_fields = ["id"]
+        read_only_fields = ["community", "id"]
 
 
 class ViolationSerializer(serializers.ModelSerializer):
@@ -20,7 +20,7 @@ class ViolationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Violation
         fields = "__all__"
-        read_only_fields = ["id", "created_at"]
+        read_only_fields = ["community", "id", "created_at"]
 
 
 class ViolationNoticeSerializer(serializers.ModelSerializer):
@@ -29,7 +29,7 @@ class ViolationNoticeSerializer(serializers.ModelSerializer):
     class Meta:
         model = ViolationNotice
         fields = "__all__"
-        read_only_fields = ["id"]
+        read_only_fields = ["community", "id"]
 
 
 class FineSerializer(serializers.ModelSerializer):
@@ -38,7 +38,7 @@ class FineSerializer(serializers.ModelSerializer):
     class Meta:
         model = Fine
         fields = "__all__"
-        read_only_fields = ["id"]
+        read_only_fields = ["community", "id"]
 
 
 class AppealSerializer(serializers.ModelSerializer):
@@ -48,7 +48,7 @@ class AppealSerializer(serializers.ModelSerializer):
     class Meta:
         model = Appeal
         fields = "__all__"
-        read_only_fields = ["id"]
+        read_only_fields = ["community", "id"]
 
     def get_filed_by_name(self, obj):
         return f"{obj.filed_by.first_name} {obj.filed_by.last_name}"

@@ -10,7 +10,7 @@ class AssessmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Assessment
         fields = "__all__"
-        read_only_fields = ["id", "created_at"]
+        read_only_fields = ["community", "id", "created_at"]
 
     def get_owner_name(self, obj):
         return f"{obj.owner.first_name} {obj.owner.last_name}"
@@ -23,7 +23,7 @@ class PaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payment
         fields = "__all__"
-        read_only_fields = ["id"]
+        read_only_fields = ["community", "id"]
 
     def get_owner_name(self, obj):
         return f"{obj.owner.first_name} {obj.owner.last_name}"
@@ -33,14 +33,14 @@ class VendorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Vendor
         fields = "__all__"
-        read_only_fields = ["id"]
+        read_only_fields = ["community", "id"]
 
 
 class BudgetCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = BudgetCategory
         fields = "__all__"
-        read_only_fields = ["id"]
+        read_only_fields = ["community", "id"]
 
 
 class BudgetSerializer(serializers.ModelSerializer):
@@ -50,7 +50,7 @@ class BudgetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Budget
         fields = "__all__"
-        read_only_fields = ["id"]
+        read_only_fields = ["community", "id"]
 
 
 class ExpenseSerializer(serializers.ModelSerializer):
@@ -61,7 +61,7 @@ class ExpenseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Expense
         fields = "__all__"
-        read_only_fields = ["id"]
+        read_only_fields = ["community", "id"]
 
 
 class ReserveFundSerializer(serializers.ModelSerializer):
@@ -70,7 +70,7 @@ class ReserveFundSerializer(serializers.ModelSerializer):
     class Meta:
         model = ReserveFund
         fields = "__all__"
-        read_only_fields = ["id"]
+        read_only_fields = ["community", "id"]
 
     def get_funded_percentage(self, obj):
         if obj.target_amount and obj.target_amount > 0:

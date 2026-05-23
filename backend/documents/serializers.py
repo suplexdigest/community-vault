@@ -9,7 +9,7 @@ class DocumentCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = DocumentCategory
         fields = "__all__"
-        read_only_fields = ["id"]
+        read_only_fields = ["community", "id"]
 
     def get_document_count(self, obj):
         return obj.documents.count()
@@ -22,4 +22,4 @@ class DocumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Document
         fields = "__all__"
-        read_only_fields = ["id", "created_at", "uploaded_by"]
+        read_only_fields = ["community", "id", "created_at", "uploaded_by"]

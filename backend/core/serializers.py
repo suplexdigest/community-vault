@@ -14,7 +14,7 @@ class UserSerializer(serializers.ModelSerializer):
             "phone", "avatar", "is_verified", "two_factor_enabled",
             "date_joined",
         ]
-        read_only_fields = ["id", "date_joined", "is_verified"]
+        read_only_fields = ["community", "id", "date_joined", "is_verified"]
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -41,7 +41,7 @@ class CommunitySerializer(serializers.ModelSerializer):
     class Meta:
         model = Community
         fields = "__all__"
-        read_only_fields = ["id", "created_at"]
+        read_only_fields = ["community", "id", "created_at"]
 
 
 class CommunityListSerializer(serializers.ModelSerializer):

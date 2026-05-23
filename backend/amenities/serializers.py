@@ -7,7 +7,7 @@ class AmenitySerializer(serializers.ModelSerializer):
     class Meta:
         model = Amenity
         fields = "__all__"
-        read_only_fields = ["id"]
+        read_only_fields = ["community", "id"]
 
 
 class ReservationSerializer(serializers.ModelSerializer):
@@ -18,4 +18,4 @@ class ReservationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Reservation
         fields = "__all__"
-        read_only_fields = ["id", "created_at", "reserved_by"]
+        read_only_fields = ["community", "id", "created_at", "reserved_by"]

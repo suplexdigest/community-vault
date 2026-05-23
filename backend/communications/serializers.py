@@ -9,7 +9,7 @@ class AnnouncementSerializer(serializers.ModelSerializer):
     class Meta:
         model = Announcement
         fields = "__all__"
-        read_only_fields = ["id", "published_date", "created_by"]
+        read_only_fields = ["community", "id", "published_date", "created_by"]
 
 
 class EmergencyAlertSerializer(serializers.ModelSerializer):
@@ -18,4 +18,4 @@ class EmergencyAlertSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmergencyAlert
         fields = "__all__"
-        read_only_fields = ["id", "sent_date", "sent_by"]
+        read_only_fields = ["community", "id", "sent_date", "sent_by"]

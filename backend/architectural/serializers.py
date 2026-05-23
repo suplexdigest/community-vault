@@ -9,7 +9,7 @@ class ARBCommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = ARBComment
         fields = "__all__"
-        read_only_fields = ["id", "created_at", "author"]
+        read_only_fields = ["community", "id", "created_at", "author"]
 
 
 class ARBRequestSerializer(serializers.ModelSerializer):
@@ -22,7 +22,7 @@ class ARBRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = ARBRequest
         fields = "__all__"
-        read_only_fields = ["id", "created_at"]
+        read_only_fields = ["community", "id", "created_at"]
 
     def get_owner_name(self, obj):
         return f"{obj.owner.first_name} {obj.owner.last_name}"
